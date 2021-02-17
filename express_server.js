@@ -13,6 +13,7 @@ function generateRandomString() {
   return Math.random().toString(36).substring(2, 8);
 }
 
+// URL DATABASE (TEMP)
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
@@ -68,7 +69,6 @@ app.get("/u/:shortURL", (req, res) => {
 app.post("/urls", (req, res) => {
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = req.body.longURL;
-  // console.log(urlDatabase);
   res.redirect(`/urls/${shortURL}`);
 });
 
