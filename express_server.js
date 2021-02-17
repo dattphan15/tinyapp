@@ -4,7 +4,8 @@ const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
-var cookieParser = require('cookie-parser')
+var cookieParser = require('cookie-parser');
+const { red } = require("chalk");
 app.use(cookieParser());
 
 
@@ -17,6 +18,20 @@ function generateRandomString() {
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
+};
+
+// USER DATABASE (TEMP)
+const users = { 
+  "userRandomID": {
+    id: "userRandomID", 
+    email: "user@example.com", 
+    password: "purple-monkey-dinosaur"
+  },
+ "user2RandomID": {
+    id: "user2RandomID", 
+    email: "user2@example.com", 
+    password: "dishwasher-funk"
+  }
 };
 
 // LOGIN & LOGOUT
@@ -47,7 +62,8 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+  const templateVars = { urls: urlDatabase, username: users[req.cookies["user_id"]] };
+  // console.log("rohit ",templateVars);
   res.render("urls_index", templateVars);
 });
 
@@ -66,11 +82,11 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
-app.post("/urls", (req, res) => {
-  const shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
-  res.redirect(`/urls/${shortURL}`);
+app.get("/register", (req, res) => {
+  const templateVars = { username: req.body["username"] };
+  res.render("urls_register", templateVars);
 });
+
 
 // DELETE LINK BUTTON
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -79,7 +95,13 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-// UPDATE BUTTON
+// POSTS
+app.post("/urls", (req, res) => {
+  const shortURL = generateRandomString();
+  urlDatabase[shortURL] = req.body.longURL;
+  res.redirect(`/urls/${shortURL}`);
+});
+
 app.post("/urls/:shortURL/update", (req, res) => {
   const { shortURL } = req.params;
   urlDatabase[shortURL] = req.body.longURL;
@@ -91,4 +113,41 @@ app.post("/urls/:shortURL", (req, res) => {
   res.redirect(`/urls/${shortURL}`); //
 });
 
+function checkEmailExists(email){
+  for(let key in users){
+    if(users[key].email===email){
+      return true;
+    }
+  }
+  return false;
+}
+app.post("/register", (req, res) => {
+  //1. We need to check whether the email or password is not blank
+  let email = req.body.email;
+  let pass = req.body.password;
+  if(email==="" || pass === ""){
+    res.send("Please enter email and password. They cannot be blank");
+  }
+
+  //2. We need to make sure the email has not already been taken
+  if(checkEmailExists(email)){
+    res.send("Email has already been taken. Please try with another one!");
+  } else{
+    //need to create a new user
+    let id = generateRandomString();
+
+    let newUser = {
+      id: id,
+      email: email, 
+      password: pass
+    }
+    //assign the new user to the users database
+    users[id] = newUser;
+
+    //write a cookie 
+    res.cookie("user_id", id);
+    res.redirect("/urls");
+  }
+ 
+});
 
