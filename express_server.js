@@ -34,13 +34,58 @@ const users = {
   }
 };
 
+// HELPER FUNCTIONS
+function checkEmailExists(email){
+  for(let key in users){
+    if(users[key].email===email){
+      return true;
+    }
+  }
+  return false;
+}
+function matchingPassword(pass){
+  for (let key in users) {
+    if(users[key].password===pass) {
+      return true;
+    }
+  }
+  return false;
+}
+function matchingID(email, pass) {
+  for (let key in users) {
+    if ((users[key].password === pass) && (users[key].email === email)) {
+      return users[key].id;
+    }
+  }
+}
+
+
 // LOGIN & LOGOUT
 app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
-  res.redirect("/urls");
+   let email = req.body.email;
+   let pass = req.body.password;
+ 
+   //1. if email doesn't exist
+   if (!checkEmailExists(email)) {
+     res.sendStatus(403);
+     //2. If email exists, but password doesnt match
+   } else if (checkEmailExists(email)) {
+      if (!matchingPassword(pass)) {
+      console.log("Password does not match for existing user!");
+      res.sendStatus(403);
+      }
+      // if email exists, and password matches
+      if (matchingPassword(pass)) {
+       console.log("Success! Email exists, password matches.");
+       res.cookie("user_id", matchingID(email, pass));
+       res.redirect("/urls"); 
+      }
+    };
+
 });
+
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect(`/urls`);
 });
 
@@ -63,17 +108,16 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const templateVars = { urls: urlDatabase, username: users[req.cookies["user_id"]] };
-  // console.log("rohit ",templateVars);
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { username: req.cookies["username"] };
+  const templateVars = { username: req.cookies["user_id"] };
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], username: req.cookies["username"] };
+  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], username: req.cookies["user_id"] };
   res.render("urls_show", templateVars);
 });
 
@@ -87,6 +131,10 @@ app.get("/register", (req, res) => {
   res.render("urls_register", templateVars);
 });
 
+app.get("/login", (req, res) => {
+  const templateVars = { username: req.body["username"] };
+  res.render("urls_login", templateVars);
+});
 
 // DELETE LINK BUTTON
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -113,14 +161,8 @@ app.post("/urls/:shortURL", (req, res) => {
   res.redirect(`/urls/${shortURL}`); //
 });
 
-function checkEmailExists(email){
-  for(let key in users){
-    if(users[key].email===email){
-      return true;
-    }
-  }
-  return false;
-}
+
+
 app.post("/register", (req, res) => {
   //1. We need to check whether the email or password is not blank
   let email = req.body.email;
@@ -148,6 +190,5 @@ app.post("/register", (req, res) => {
     res.cookie("user_id", id);
     res.redirect("/urls");
   }
- 
 });
 
