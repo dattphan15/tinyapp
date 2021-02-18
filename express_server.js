@@ -7,6 +7,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 var cookieParser = require('cookie-parser');
 const { red } = require("chalk");
 app.use(cookieParser());
+const bcrypt = require('bcrypt');
 
 
 // GENERATE RANDOM SHORT URL
@@ -53,6 +54,13 @@ function matchingPassword(pass){
   }
   return false;
 }
+function matchingUser(email) {
+  for (let key in users) {
+    if(users[key].email === email) {
+      return users[key];
+    }
+  }
+}
 function matchingID(email, pass) {
   for (let key in users) {
     if ((users[key].password === pass) && (users[key].email === email)) {
@@ -60,43 +68,64 @@ function matchingID(email, pass) {
     }
   }
 }
-
-// Create a function named urlsForUser(id) which returns the URLs where the userID is equal to the id of the currently logged-in user.
-
 function getUserURLS(urlDatabase, id) {
   let userURLS = {};
   for (let key in urlDatabase) {
     if (urlDatabase[key].userID === id) { // userRandomID === (id)
-      userURLS[key] = urlDatabase[key]; // userSpecificURLS {userRandomID}
+      userURLS[key] = urlDatabase[key]; // adding new url to urldatabase
     }
   }
   return userURLS;
 };
 
 
+
+
 // LOGIN
 app.post("/login", (req, res) => {
   let email = req.body.email;
   let pass = req.body.password;
+  const user = matchingUser(email);
+  console.log("pass: ", pass);
+  console.log("user.password: ", user.password);
+  console.log("user: ", user);
+
   
   //1. if email doesn't exist
   if (!checkEmailExists(email)) {
     res.status(401).send("No user with that username found");
     //2. If email exists, but password doesnt match
   } else if (checkEmailExists(email)) {
-    if (!matchingPassword(pass)) {
-      console.log("Password does not match for existing user!");
-      res.status(401).send("Password is incorrect");
-    }
-    // if email exists, and password matches
-    if (matchingPassword(pass)) {
-      console.log("Success! Email exists, password matches.");
-      res.cookie("user_id", matchingID(email, pass));
-      res.redirect("/urls"); 
-    }
+    
+    // if (!matchingPassword(pass)) {
+    //   console.log("Password does not match for existing user!");
+    //   res.status(401).send("Password is incorrect");
+    // }
+    // // if email exists, and password matches
+    // if (matchingPassword(pass)) {
+    //   console.log("Success! Email exists, password matches.");
+    //   res.cookie("user_id", matchingID(email, pass));
+    //   res.redirect("/urls"); 
+    // }
+    bcrypt.compare(pass, user.password, (err, result) => {
+      if (result) {
+        res.cookie("user_id", matchingID(email, pass));
+        res.redirect("/urls"); 
+      } else {
+        return res.status(401).send("Password incorrect");
+      }
+    });
+
   };
   
 });
+
+
+
+
+
+
+
 // LOGOUT
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
@@ -105,8 +134,8 @@ app.post("/logout", (req, res) => {
 
 app.post("/register", (req, res) => {
   //1. We need to check whether the email or password is not blank
-  let email = req.body.email;
-  let pass = req.body.password;
+  const email = req.body.email;
+  const pass = req.body.password;
   if(email==="" || pass === ""){
     res.send("Please enter email and password. They cannot be blank");
   }
@@ -117,14 +146,16 @@ app.post("/register", (req, res) => {
   } else{
     //need to create a new user
     let id = generateRandomString();
+    const hashedPassword = bcrypt.hashSync(pass, 10);
 
     let newUser = {
       id: id,
       email: email, 
-      password: pass
+      password: hashedPassword
     }
     //assign the new user to the users database
     users[id] = newUser;
+    console.log(users);
 
     //write a cookie 
     res.cookie("user_id", id);
