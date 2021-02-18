@@ -62,34 +62,64 @@ function matchingID(email, pass) {
 
 // LOGIN & LOGOUT
 app.post("/login", (req, res) => {
-   let email = req.body.email;
-   let pass = req.body.password;
- 
-   //1. if email doesn't exist
-   if (!checkEmailExists(email)) {
-     res.sendStatus(403);
-     //2. If email exists, but password doesnt match
-   } else if (checkEmailExists(email)) {
-      if (!matchingPassword(pass)) {
+  let email = req.body.email;
+  let pass = req.body.password;
+  
+  //1. if email doesn't exist
+  if (!checkEmailExists(email)) {
+    res.sendStatus(403);
+    //2. If email exists, but password doesnt match
+  } else if (checkEmailExists(email)) {
+    if (!matchingPassword(pass)) {
       console.log("Password does not match for existing user!");
       res.sendStatus(403);
-      }
-      // if email exists, and password matches
-      if (matchingPassword(pass)) {
-       console.log("Success! Email exists, password matches.");
-       res.cookie("user_id", matchingID(email, pass));
-       res.redirect("/urls"); 
-      }
-    };
-
+    }
+    // if email exists, and password matches
+    if (matchingPassword(pass)) {
+      console.log("Success! Email exists, password matches.");
+      res.cookie("user_id", matchingID(email, pass));
+      res.redirect("/urls"); 
+    }
+  };
+  
 });
+
 
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
   res.redirect(`/urls`);
 });
 
+app.post("/register", (req, res) => {
+  //1. We need to check whether the email or password is not blank
+  let email = req.body.email;
+  let pass = req.body.password;
+  if(email==="" || pass === ""){
+    res.send("Please enter email and password. They cannot be blank");
+  }
 
+  //2. We need to make sure the email has not already been taken
+  if(checkEmailExists(email)){
+    res.send("Email has already been taken. Please try with another one!");
+  } else{
+    //need to create a new user
+    let id = generateRandomString();
+
+    let newUser = {
+      id: id,
+      email: email, 
+      password: pass
+    }
+    //assign the new user to the users database
+    users[id] = newUser;
+
+    //write a cookie 
+    res.cookie("user_id", id);
+    res.redirect("/urls");
+  }
+});
+
+// GET
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -112,8 +142,13 @@ app.get("/urls", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
+  if (req.cookies["user_id"]) {
   const templateVars = { username: req.cookies["user_id"] };
   res.render("urls_new", templateVars);
+  }
+  else {
+    res.redirect("/login");
+  }
 });
 
 app.get("/urls/:shortURL", (req, res) => {
@@ -163,32 +198,4 @@ app.post("/urls/:shortURL", (req, res) => {
 
 
 
-app.post("/register", (req, res) => {
-  //1. We need to check whether the email or password is not blank
-  let email = req.body.email;
-  let pass = req.body.password;
-  if(email==="" || pass === ""){
-    res.send("Please enter email and password. They cannot be blank");
-  }
-
-  //2. We need to make sure the email has not already been taken
-  if(checkEmailExists(email)){
-    res.send("Email has already been taken. Please try with another one!");
-  } else{
-    //need to create a new user
-    let id = generateRandomString();
-
-    let newUser = {
-      id: id,
-      email: email, 
-      password: pass
-    }
-    //assign the new user to the users database
-    users[id] = newUser;
-
-    //write a cookie 
-    res.cookie("user_id", id);
-    res.redirect("/urls");
-  }
-});
 
