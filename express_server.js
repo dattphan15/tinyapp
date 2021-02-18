@@ -20,6 +20,8 @@ const urlDatabase = {
   i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" }
 };
 
+// shortURL: { longURL: "www.example.com", userID: "id"}
+
 // USER DATABASE (TEMP)
 const users = { 
   "userRandomID": {
@@ -61,30 +63,30 @@ function matchingID(email, pass) {
 
 // Create a function named urlsForUser(id) which returns the URLs where the userID is equal to the id of the currently logged-in user.
 
-function urlsForUser(id) {
-  const userSpecificURLS = {};
-  for (let key in users) {
-    if (users[key].id === id) {
-      userSpecificURLS[shortURL] = urlDatabase[shortURL]; 
+function getUserURLS(urlDatabase, id) {
+  let userURLS = {};
+  for (let key in urlDatabase) {
+    if (urlDatabase[key].userID === id) { // userRandomID === (id)
+      userURLS[key] = urlDatabase[key]; // userSpecificURLS {userRandomID}
     }
   }
-  return userSpecificURLS;
+  return userURLS;
 };
 
 
-// LOGIN & LOGOUT
+// LOGIN
 app.post("/login", (req, res) => {
   let email = req.body.email;
   let pass = req.body.password;
   
   //1. if email doesn't exist
   if (!checkEmailExists(email)) {
-    res.sendStatus(403);
+    res.status(401).send("No user with that username found");
     //2. If email exists, but password doesnt match
   } else if (checkEmailExists(email)) {
     if (!matchingPassword(pass)) {
       console.log("Password does not match for existing user!");
-      res.sendStatus(403);
+      res.status(401).send("Password is incorrect");
     }
     // if email exists, and password matches
     if (matchingPassword(pass)) {
@@ -95,8 +97,7 @@ app.post("/login", (req, res) => {
   };
   
 });
-
-
+// LOGOUT
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
   res.redirect(`/urls`);
@@ -150,12 +151,11 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const currentUser = (req.cookies["user_id"]);
-  console.log(currentUser);
   if (!currentUser) {
     res.send("Please login or register")
   } else {
-    const userSpecificURLS = urlsForUser(users.id);
-  const templateVars = { urls: userSpecificURLS, username: users[req.cookies["user_id"]] };
+    let userURLS = getUserURLS(urlDatabase, currentUser);
+  const templateVars = { urls: userURLS, currentUser, };
   res.render("urls_index", templateVars);
   }
 });
@@ -187,14 +187,20 @@ app.get("/register", (req, res) => {
 
 app.get("/login", (req, res) => {
   const templateVars = { username: req.body["username"] };
+  console.log(req.body);
   res.render("urls_login", templateVars);
 });
 
 // DELETE LINK BUTTON
 app.post("/urls/:shortURL/delete", (req, res) => {
+  const currentUser = (req.cookies["user_id"]);
+  if (currentUser) {
   const { shortURL } = req.params;
   delete urlDatabase[shortURL];
   res.redirect("/urls");
+  } else {
+    res.status(401).send("Not permitted");
+  }
 });
 
 // POSTS
@@ -210,12 +216,15 @@ app.post("/urls/:shortURL", (req, res) => {
 });
 
 app.post("/urls/:shortURL/update", (req, res) => {
-  const { shortURL } = req.params;
-  urlDatabase[shortURL].longURL = req.body.longURL;
-  res.redirect("/urls");
+  const currentUser = (req.cookies["user_id"]);
+  if (currentUser) {
+    const { shortURL } = req.params;
+    urlDatabase[shortURL].longURL = req.body.longURL;
+    res.redirect("/urls");
+  } else {
+    res.status(401).send("Not permitted");
+  }
 });
-
-
 
 
 
