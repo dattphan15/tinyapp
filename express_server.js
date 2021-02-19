@@ -27,12 +27,12 @@ app.post("/login", (req, res) => {
   let email = req.body.email;
   let pass = req.body.password;
   const user = matchingUser(email);
-  console.log(matchingUser(email));
 
-  //1. if email doesn't exist
+  if(email==="" || pass === ""){
+    res.send("Please enter email and password. They cannot be blank");
+  }
   if (!checkEmailExists(email)) {
     res.status(401).send("No user with that username found");
-    //2. If email exists, but password doesnt match
   } else if (checkEmailExists(email)) {
     bcrypt.compare(pass, user.password, (err, result) => {
       if (result) {
@@ -61,17 +61,14 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
-  //1. We need to check whether the email or password is not blank
   const email = req.body.email;
   const pass = req.body.password;
   if(email==="" || pass === ""){
     res.send("Please enter email and password. They cannot be blank");
   }
-  //2. We need to make sure the email has not already been taken
   if(checkEmailExists(email)){
     res.send("Email has already been taken. Please try with another one!");
   } else{
-    //3. need to create a new user
     const randomID = generateRandomString();
     const hashedPassword = bcrypt.hashSync(pass, 10);
     let newUser = {
@@ -79,9 +76,8 @@ app.post("/register", (req, res) => {
       email: email, 
       password: hashedPassword
     }
-    //4. assign the new user to the users database
     users[randomID] = newUser;
-    //5. write a cookie 
+    // assign cookie to new user 
     req.session.user_id = newUser.id;
     res.redirect("/urls");
   }
@@ -107,13 +103,12 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const currentUser = users[req.session.user_id];
-  const currentID = req.session.user_id;
+  const currentSession = req.session.user_id;
 
-  if (currentUser === null) {
+  if (currentSession === null) {
     res.send("Please login or register")
   } else {
-    let userURLS = getUserURLS(urlDatabase, currentID);
-    console.log("userURLS: ", userURLS);
+    let userURLS = getUserURLS(urlDatabase, currentSession);
     const templateVars = { urls: userURLS, currentUser: currentUser };
     res.render("urls_index", templateVars);
   }
@@ -133,6 +128,12 @@ app.get("/urls/new", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const currentUser = users[req.session.user_id];
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, currentUser: currentUser };
+  if(!urlDatabase[req.params.shortURL]) {
+    res.status(404).send('404 Page not found');
+  }
+  if (urlDatabase[req.params.shortURL].userID !== req.session.user_id) {
+    res.status(403).send('403 Forbidden');
+  }
   res.render("urls_show", templateVars);
 });
 
@@ -142,7 +143,7 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 
-// DELETE LINK BUTTON
+// POSTS
 app.post("/urls/:shortURL/delete", (req, res) => {
   const currentUser = (req.session.user_id);
   if (currentUser) {
@@ -154,7 +155,6 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   }
 });
 
-// POSTS
 app.post("/urls", (req, res) => {  
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = { longURL : req.body.longURL, userID: req.session.user_id };
@@ -166,14 +166,11 @@ app.post("/urls/:shortURL", (req, res) => {
   res.redirect(`/urls/${shortURL}`); 
 });
 
-app.post("/urls/:shortURL/update", (req, res) => {
-  const currentUser = req.session.user_id;
-  if (currentUser) {
-    const { shortURL } = req.params;
-    urlDatabase[shortURL].longURL = req.body.longURL;
-    res.redirect("/urls");
-  } else {
-    res.status(401).send("Not permitted");
+app.post('/urls/:shortURL/update', (req, res) => {
+  const shortURL = req.params.shortURL;
+  if (urlDatabase[shortURL].userID === req.session.user_id) {
+    urlDatabase[shortURL].longURL = req.body.editLongURL;
+    res.redirect('/urls');
   }
+  res.status(401).send("Not permitted");
 });
-

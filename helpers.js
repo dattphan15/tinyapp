@@ -19,6 +19,7 @@ const users = {
 };
 
 // HELPER FUNCTIONS
+// Returns true if email exists
 function checkEmailExists(email){
   for(let key in users){
     if(users[key].email===email){
@@ -27,6 +28,7 @@ function checkEmailExists(email){
   }
   return undefined;
 }
+// Returns entire user object if email matches an existing user
 function matchingUser(email) {
   for (let key in users) {
     if(users[key].email === email) {
@@ -34,20 +36,20 @@ function matchingUser(email) {
     }
   }
 }
+// Returns matching user ID, based on email and password parameters
 function matchingID(email, pass) {
   for (let key in users) {
     if ((users[key].password === pass) && (users[key].email === email)) {
-      // console.log("userskeyid: ", users[key].id);
       return users[key].id;
     }
   }
 }
+// Creates new URLs object list by specific user ID
 function getUserURLS(urlDatabase, id) {
   let userURLS = {};
   for (let key in urlDatabase) {
-    if (urlDatabase[key].userID === id) { // userRandomID === (id)
-      userURLS[key] = urlDatabase[key]; // adding new url to urldatabase
-      // console.log(userURLS);
+    if (urlDatabase[key].userID === id) {
+      userURLS[key] = urlDatabase[key]; // adding new urls to urldatabase
     }
   }
   return userURLS;
